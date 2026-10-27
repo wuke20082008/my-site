@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基因型-表型关联平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/v4-shims.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0F5132',
+                        secondary: '#375A5F',
+                        accent: '#1E88E5',
+                        success: '#2E7D32',
+                        warning: '#F57C00',
+                        danger: '#D32F2F',
+                        light: '#F8F9FA',
+                        dark: '#212529'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .table-fixed {
+                table-layout: fixed;
+            }
+            .comment-hidden {
+                opacity: 0.6;
+                filter: blur(2px);
+            }
+            .image-preview {
+                max-width: 100px;
+                max-height: 100px;
+                object-fit: cover;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            .image-preview-container {
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+            .highlight {
+                background-color: #FFF9C4;
+                padding: 2px 4px;
+                border-radius: 2px;
+                font-weight: 600;
+            }
+        }
+    </style>
+</head>
+<body class="bg-light text-dark font-sans">
+    <!-- 顶部导航栏 -->
+    <header class="bg-primary text-white shadow-lg sticky top-0 z-50 transition-all duration-300">
+        <div class="container mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center">
+            <div class="flex items-center mb-3 md:mb-0">
+                <i class="fas fa-dna text-2xl mr-3"></i>
+                <h1 class="text-xl md:text-2xl font-bold">基因型-表型关联平台</h1>
+            </div>
+            
+            <!-- 全局搜索框 -->
+            <div class="w-full md:w-1/3 mb-3 md:mb-0">
+                <div class="relative">
+                    <input type="text" id="globalSearch" placeholder="全局搜索..." 
+                           class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-accent/50">
+                    <button id="searchBtn" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-accent">
+                        <i class="fas fa-search"></i>
+                    </button>
+                    <span id="searchCount" class="absolute -bottom-6 left-0 text-xs text-gray-300"></span>
+                </div>
+            </div>
+            
+            <!-- 用户功能区 -->
+            <div class="flex items-center space-x-3">
+                <button id="addDataBtn" class="bg-accent hover:bg-accent/80 text-white px-4 py-2 rounded-lg hidden">
+                    <i class="fas fa-plus mr-2"></i>新增数据
+                </button>
+                <button id="loginBtn" class="bg-white text-primary hover:bg-gray-100 px-4 py-2 rounded-lg font-medium">
+                    <i class="fas fa-sign-in-alt mr-2"></i>登录
+                </button>
+                <button id="registerBtn" class="bg-accent hover:bg-accent/80 text-white px-4 py-2 rounded-lg font-medium hidden">
+                    <i class="fas fa-user-plus mr-2"></i>注册
+                </button>
+                <div id="userInfo" class="hidden items-center space-x-3">
+                    <span id="username" class="font-medium"></span>
+                    <button id="logoutBtn" class="bg-danger hover:bg-danger/80 text-white px-3 py-1 rounded-lg text-sm">
+                        <i class="fas fa-sign-out-alt mr-1"></i>退出
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="container mx-auto px-4 py-6">
+        <!-- 数据统计卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-primary">
+                <div class="flex items-center">
+                    <i class="fas fa-database text-primary text-2xl mr-3"></i>
+                    <div>
+                        <p class="text-sm text-gray-600">总数据条目</p>
+                        <p id="totalRecords" class="text-2xl font-bold">0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-accent">
+                <div class="flex items-center">
+                    <i class="fas fa-book text-accent text-2xl mr-3"></i>
+                    <div>
+                        <p class="text-sm text-gray-600">已关联参考文献</p>
+                        <p id="totalReferences" class="text-2xl font-bold">0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-success">
+                <div class="flex items-center">
+                    <i class="fas fa-comments text-success text-2xl mr-3"></i>
+                    <div>
+                        <p class="text-sm text-gray-600">专家评论数</p>
+                        <p id="totalComments" class="text-2xl font-bold">0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-warning">
+                <div class="flex items-center">
+                    <i class="fas fa-users text-warning text-2xl mr-3"></i>
+                    <div>
+                        <p class="text-sm text-gray-600">活跃研究者</p>
+                        <p id="totalResearchers" class="text-2xl font-bold">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 筛选面板 -->
+        <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+            <h2 class="text-lg font-bold mb-4 flex items-center">
+                <i class="fas fa-filter text-primary mr-2"></i>
+                高级筛选
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- 序号筛选 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">序号范围</label>
+                    <div class="flex space-x-2">
+                        <input type="number" id="idMin" placeholder="最小值" 
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                        <input type="number" id="idMax" placeholder="最大值" 
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    </div>
+                </div>
+                
+                <!-- 基因型筛选 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">基因型</label>
+                    <input type="text" id="genotypeFilter" placeholder="输入基因型关键词" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                </div>
+                
+                <!-- 产前表型筛选 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">产前表型</label>
+                    <input type="text" id="prenatalFilter" placeholder="输入产前表型关键词" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                </div>
+                
+                <!-- 产后表型筛选 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">产后表型</label>
+                    <input type="text" id="postnatalFilter" placeholder="输入产后表型关键词" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                </div>
+                
+                <!-- 出处筛选 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">出处</label>
+                    <input type="text" id="sourceFilter" placeholder="输入作者或期刊关键词" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                </div>
+                
+                <!-- 评论数筛选 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">评论数范围</label>
+                    <div class="flex space-x-2">
+                        <input type="number" id="commentsMin" placeholder="最少评论数" 
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                        <input type="number" id="commentsMax" placeholder="最多评论数" 
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end mt-4 space-x-3">
+                <button id="resetFilters" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                    <i class="fas fa-redo mr-2"></i>重置
+                </button>
+                <button id="applyFilters" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+                    <i class="fas fa-check mr-2"></i>应用筛选
+                </button>
+            </div>
+        </div>
+
+        <!-- 数据表格 -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+            <div class="overflow-x-auto">
+                <table class="w-full table-fixed">
+                    <thead class="bg-primary text-white">
+                        <tr>
+                            <th class="px-4 py-3 text-left w-12">序号</th>
+                            <th class="px-4 py-3 text-left w-32">基因型</th>
+                            <th class="px-4 py-3 text-left w-48">产前表型</th>
+                            <th class="px-4 py-3 text-left w-48">产后表型</th>
+                            <th class="px-4 py-3 text-left w-40">出处</th>
+                            <th class="px-4 py-3 text-left w-24">留言区</th>
+                            <th class="px-4 py-3 text-left w-16">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody">
+                        <!-- 数据行将通过JavaScript动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 分页控件 -->
+        <div class="flex justify-between items-center">
+            <div class="text-sm text-gray-600">
+                显示 <span id="currentPageInfo">0-0</span> 条，共 <span id="totalItems">0</span> 条记录
+            </div>
+            <div class="flex space-x-2">
+                <button id="prevPage" class="px-3 py-1 border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <span id="pageInfo" class="px-3 py-1">第 1 页，共 0 页</span>
+                <button id="nextPage" class="px-3 py-1 border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-dark text-white py-6">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <p>&copy; 2026 基因型-表型关联平台. 保留所有权利.</p>
+                </div>
+                <div class="flex space-x-6">
+                    <a href="#" class="hover:text-accent">使用帮助</a>
+                    <a href="#" class="hover:text-accent">数据协议</a>
+                    <a href="#" class="hover:text-accent">联系我们</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 登录模态框 -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">用户登录</h2>
+                <button id="closeLoginModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="loginForm">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+                    <input type="text" id="loginUsername" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+                    <input type="password" id="loginPassword" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                </div>
+                <div class="mb-4 flex items-center">
+                    <input type="checkbox" id="rememberMe" class="mr-2">
+                    <label class="text-sm text-gray-600">记住我</label>
+                </div>
+                <button type="submit" class="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary/90">
+                    登录
+                </button>
+            </form>
+            <div class="mt-4 text-center">
+                <p class="text-sm text-gray-600">还没有账号？<button id="showRegisterModal" class="text-primary hover:underline">立即注册</button></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 注册模态框 -->
+    <div id="registerModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">用户注册</h2>
+                <button id="closeRegisterModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="registerForm">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+                    <input type="text" id="registerUsername" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">邮箱</label>
+                    <input type="email" id="registerEmail" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+                    <input type="password" id="registerPassword" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">确认密码</label>
+                    <input type="password" id="registerConfirmPassword" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                </div>
+                <div class="mb-4 flex items-center">
+                    <input type="checkbox" id="agreeTerms" required class="mr-2">
+                    <label class="text-sm text-gray-600">我已阅读并同意<a href="#" class="text-primary hover:underline">用户协议</a>和<a href="#" class="text-primary hover:underline">隐私政策</a></label>
+                </div>
+                <button type="submit" class="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary/90">
+                    注册
+                </button>
+            </form>
+            <div class="mt-4 text-center">
+                <p class="text-sm text-gray-600">已有账号？<button id="showLoginModal" class="text-primary hover:underline">立即登录</button></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增数据模态框 -->
+    <div id="addDataModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-3xl p-6 m-4">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">新增基因型-表型关联数据</h2>
+                <button id="closeAddDataModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="addDataForm">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- 基因型 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">基因型</label>
+                        <input type="text" id="addGenotype" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    </div>
+                    
+                    <!-- 产前表型 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">产前表型</label>
+                        <textarea id="addPrenatal" rows="3" required
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"></textarea>
+                    </div>
+                    
+                    <!-- 产后表型 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">产后表型</label>
+                        <textarea id="addPostnatal" rows="3" required
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"></textarea>
+                    </div>
+                    
+                    <!-- 出处信息 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">出处信息</label>
+                        <textarea id="addSource" rows="3" required
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                  placeholder="请输入PMID、原文链接或数据提供者相关信息"></textarea>
+                    </div>
+                </div>
+                
+                <!-- 产前表型图片 -->
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">产前表型图片</label>
+                    <div class="flex items-center space-x-4">
+                        <input type="file" id="addPrenatalImages" multiple accept="image/*"
+                               class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                        <p class="text-sm text-gray-500">支持多张图片上传，格式：JPG、PNG</p>
+                    </div>
+                    <div id="prenatalImagePreview" class="mt-2 image-preview-container"></div>
+                </div>
+                
+                <!-- 产后表型图片 -->
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">产后表型图片</label>
+                    <div class="flex items-center space-x-4">
+                        <input type="file" id="addPostnatalImages" multiple accept="image/*"
+                               class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                        <p class="text-sm text-gray-500">支持多张图片上传，格式：JPG、PNG</p>
+                    </div>
+                    <div id="postnatalImagePreview" class="mt-2 image-preview-container"></div>
+                </div>
+                
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" id="cancelAddData" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                        取消
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+                        提交数据
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 评论模态框 -->
+    <div id="commentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 overflow-y-auto">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 m-4">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">基因型评论区</h2>
+                <button id="closeCommentModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- 基因型信息 -->
+            <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                <h3 id="commentGenotype" class="text-lg font-bold"></h3>
+                <p class="text-sm text-gray-600">点击下方评论框发表您的专业见解</p>
+            </div>
+            
+            <!-- 评论输入区 -->
+            <div class="mb-6">
+                <textarea id="commentInput" rows="3" placeholder="请输入您的评论..."
+                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"></textarea>
+                <div class="flex justify-between items-center mt-2">
+                    <div class="flex items-center space-x-4">
+                        <label class="cursor-pointer">
+                            <i class="fas fa-image text-gray-500 hover:text-primary"></i>
+                            <input type="file" id="commentImage" multiple accept="image/*" class="hidden">
+                        </label>
+                        <span id="commentImageCount" class="text-sm text-gray-500">0/5 张图片</span>
+                    </div>
+                    <button id="submitComment" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+                        发表评论
+                    </button>
+                </div>
+                <div id="commentImagePreview" class="mt-2 image-preview-container"></div>
+            </div>
+            
+            <!-- 评论列表 -->
+            <div id="commentList">
+                <!-- 评论将通过JavaScript动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 图片预览模态框 -->
+    <div id="imagePreviewModal" class="fixed inset-0 bg-black bg-opacity-90 hidden items-center justify-center z-50">
+        <div class="relative">
+            <button id="closeImagePreview" class="absolute -top-10 right-0 text-white text-2xl">
+                <i class="fas fa-times"></i>
+            </button>
+            <img id="previewImage" src="" alt="图片预览" class="max-w-full max-h-full object-contain">
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let currentUser = null;
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        let currentFilters = {
+            idMin: '',
+            idMax: '',
+            genotype: '',
+            prenatal: '',
+            postnatal: '',
+            source: '',
+            commentsMin: '',
+            commentsMax: ''
+        };
+        let searchQuery = '';
+
+        // 模拟数据
+        const data = [
+            {
+                id: 1,
+                genotype: "CYP2D6*10",
+                prenatal: "无明显异常，超声检查未见结构畸形",
+                postnatal: "药物代谢能力下降，易发生药物蓄积",
+                source: {
+                    pmid: "32145678",
+                    link: "https://pubmed.ncbi.nlm.nih.gov/32145678/",
+                    details: "Smith AB, Johnson CD. CYP2D6*10 polymorphism and drug metabolism. Pharmacogenomics Journal. 2020;20(3):456-463."
+                },
+                prenatalImages: [],
+                postnatalImages: [],
+                comments: [
+                    {
+                        id: 1,
+                        author: "张教授（临床药理）",
+                        date: "2026-02-15",
+                        content: "该基因型在东亚人群中频率约30%，临床使用CYP2D6底物类药物（如舍曲林、美托洛尔）时需降低剂量50%以上。",
+                        images: [],
+                        likes: 12,
+                        likedBy: ["user1", "user2"],
+                        replies: [
+                            {
+                                id: 11,
+                                author: "李医生（心内科）",
+                                date: "2026-02-16",
+                                content: "感谢张教授的分享！请问对于高血压患者，美托洛尔的具体剂量调整建议是什么？",
+                                images: [],
+                                likes: 5,
+                                likedBy: ["user3"]
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 2,
+                genotype: "APOE ε4",
+                prenatal: "无特异性产前表型",
+                postnatal: "增加阿尔茨海默病发病风险，血脂代谢异常",
+                source: {
+                    pmid: "33456789",
+                    link: "https://pubmed.ncbi.nlm.nih.gov/33456789/",
+                    details: "Wang Y, Zhang L. APOE ε4 and Alzheimer's disease risk. Neurobiology of Aging. 2021;95:123-135."
+                },
+                prenatalImages: [],
+                postnatalImages: [],
+                comments: [
+                    {
+                        id: 2,
+                        author: "陈教授（神经科）",
+                        date: "2026-02-18",
+                        content: "APOE ε4纯合子携带者的阿尔茨海默病发病风险比普通人群高10-15倍，需要早期干预和预防。",
+                        images: [],
+                        likes: 8,
+                        likedBy: ["user1", "user4"],
+                        replies: []
+                    }
+                ]
+            },
+            {
+                id: 3,
+                genotype: "CFTR ΔF508",
+                prenatal: "羊水淀粉酶水平降低，胎儿超声显示肠管回声增强",
+                postnatal: "囊性纤维化，反复肺部感染，胰腺功能不全",
+                source: {
+                    pmid: "34567890",
+                    link: "https://pubmed.ncbi.nlm.nih.gov/34567890/",
+                    details: "Davis PB, Derichs N. CFTR ΔF508 mutation and cystic fibrosis. Lancet Respiratory Medicine. 2022;10(2):123-134."
+                },
+                prenatalImages: [],
+                postnatalImages: [],
+                comments: [
+                    {
+                        id: 3,
+                        author: "赵医生（儿科）",
+                        date: "2026-02-20",
+                        content: "产前诊断对于CFTR ΔF508突变携带者非常重要，可以早期干预和治疗，改善预后。",
+                        images: [],
+                        likes: 6,
+                        likedBy: ["user2", "user5"],
+                        replies: [
+                            {
+                                id: 31,
+                                author: "孙护士（新生儿科）",
+                                date: "2026-02-21",
+                                content: "请问新生儿期的主要治疗措施有哪些？",
+                                images: [],
+                                likes: 3,
+                                likedBy: ["user1"]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ];
+
+        // 管理员用户列表
+        const adminUsers = ['admin', 'superuser'];
+
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePage();
+            bindEvents();
+            updateStats();
+            renderTable();
+        });
+
+        // 初始化页面
+        function initializePage() {
+            // 检查本地存储中的用户信息
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                updateUserInterface();
+            }
+        }
+
+        // 绑定事件
+        function bindEvents() {
+            // 用户认证相关事件
+            document.getElementById('loginBtn').addEventListener('click', showLoginModal);
+            document.getElementById('registerBtn').addEventListener('click', showRegisterModal);
+            document.getElementById('closeLoginModal').addEventListener('click', closeLoginModal);
+            document.getElementById('closeRegisterModal').addEventListener('click', closeRegisterModal);
+            document.getElementById('showRegisterModal').addEventListener('click', showRegisterModal);
+            document.getElementById('showLoginModal').addEventListener('click', showLoginModal);
+            
+            // 表单提交事件
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('registerForm').addEventListener('submit', handleRegister);
+            
+            // 数据操作相关事件
+            document.getElementById('addDataBtn').addEventListener('click', showAddDataModal);
+            document.getElementById('closeAddDataModal').addEventListener('click', closeAddDataModal);
+            document.getElementById('cancelAddData').addEventListener('click', closeAddDataModal);
+            document.getElementById('addDataForm').addEventListener('submit', handleAddData);
+            
+            // 筛选相关事件
+            document.getElementById('applyFilters').addEventListener('click', applyFilters);
+            document.getElementById('resetFilters').addEventListener('click', resetFilters);
+            
+            // 分页相关事件
+            document.getElementById('prevPage').addEventListener('click', prevPage);
+            document.getElementById('nextPage').addEventListener('click', nextPage);
+            
+            // 全局搜索事件
+            const globalSearchInput = document.getElementById('globalSearch');
+            globalSearchInput.addEventListener('input', debounce(handleGlobalSearch, 300));
+            document.getElementById('searchBtn').addEventListener('click', handleGlobalSearch);
+            
+            // 图片上传事件
+            document.getElementById('addPrenatalImages').addEventListener('change', (e) => handleImageUpload(e, 'prenatal'));
+            document.getElementById('addPostnatalImages').addEventListener('change', (e) => handleImageUpload(e, 'postnatal'));
+            document.getElementById('commentImage').addEventListener('change', (e) => handleImageUpload(e, 'comment'));
+            
+            // 评论相关事件
+            document.getElementById('closeCommentModal').addEventListener('click', closeCommentModal);
+            document.getElementById('submitComment').addEventListener('click', submitComment);
+            
+            // 图片预览事件
+            document.getElementById('closeImagePreview').addEventListener('click', closeImagePreview);
+            
+            // 退出登录事件
+            document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+        }
+
+        // 用户认证功能
+        function showLoginModal() {
+            document.getElementById('loginModal').classList.remove('hidden');
+            document.getElementById('loginModal').classList.add('flex');
+        }
+
+        function closeLoginModal() {
+            document.getElementById('loginModal').classList.add('hidden');
+            document.getElementById('loginModal').classList.remove('flex');
+        }
+
+        function showRegisterModal() {
+            closeLoginModal();
+            document.getElementById('registerModal').classList.remove('hidden');
+            document.getElementById('registerModal').classList.add('flex');
+        }
+
+        function closeRegisterModal() {
+            document.getElementById('registerModal').classList.add('hidden');
+            document.getElementById('registerModal').classList.remove('flex');
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            const rememberMe = document.getElementById('rememberMe').checked;
+            
+            // 简化的登录验证
+            if (username && password) {
+                currentUser = {
+                    username: username,
+                    role: username === 'admin' ? 'admin' : 'user'
+                };
+                
+                if (rememberMe) {
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                }
+                
+                updateUserInterface();
+                closeLoginModal();
+                alert('登录成功！');
+            } else {
+                alert('请输入用户名和密码！');
+            }
+        }
+
+        function handleRegister(e) {
+            e.preventDefault();
+            const username = document.getElementById('registerUsername').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('registerConfirmPassword').value;
+            
+            if (password !== confirmPassword) {
+                alert('两次输入的密码不一致！');
+                return;
+            }
+            
+            // 简化的注册逻辑
+            currentUser = {
+                username: username,
+                email: email,
+                role: 'user'
+            };
+            
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            updateUserInterface();
+            closeRegisterModal();
+            alert('注册成功！');
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            localStorage.removeItem('currentUser');
+            updateUserInterface();
+            alert('已退出登录！');
+        }
+
+        function updateUserInterface() {
+            if (currentUser) {
+                document.getElementById('loginBtn').classList.add('hidden');
+                document.getElementById('registerBtn').classList.add('hidden');
+                document.getElementById('userInfo').classList.remove('hidden');
+                document.getElementById('userInfo').classList.add('flex');
+                document.getElementById('username').textContent = currentUser.username;
+                document.getElementById('addDataBtn').classList.remove('hidden');
+            } else {
+                document.getElementById('loginBtn').classList.remove('hidden');
+                document.getElementById('registerBtn').classList.remove('hidden');
+                document.getElementById('userInfo').classList.add('hidden');
+                document.getElementById('userInfo').classList.remove('flex');
+                document.getElementById('addDataBtn').classList.add('hidden');
+            }
+        }
+
+        // 数据操作功能
+        function showAddDataModal() {
+            if (!currentUser) {
+                alert('请先登录！');
+                return;
+            }
+            
+            document.getElementById('addDataModal').classList.remove('hidden');
+            document.getElementById('addDataModal').classList.add('flex');
+        }
+
+        function closeAddDataModal() {
+            document.getElementById('addDataModal').classList.add('hidden');
+            document.getElementById('addDataModal').classList.remove('flex');
+            document.getElementById('addDataForm').reset();
+            document.getElementById('prenatalImagePreview').innerHTML = '';
+            document.getElementById('postnatalImagePreview').innerHTML = '';
+        }
+
+        function handleAddData(e) {
+            e.preventDefault();
+            
+            if (!currentUser) {
+                alert('请先登录！');
+                return;
+            }
+            
+            const genotype = document.getElementById('addGenotype').value;
+            const prenatal = document.getElementById('addPrenatal').value;
+            const postnatal = document.getElementById('addPostnatal').value;
+            const sourceDetails = document.getElementById('addSource').value;
+            
+            // 解析出处信息
+            let pmid = '';
+            let link = '';
+            if (sourceDetails.includes('PMID:')) {
+                pmid = sourceDetails.match(/PMID:(\d+)/)[1];
+            } else if (sourceDetails.includes('http')) {
+                link = sourceDetails;
+            }
+            
+            const newData = {
+                id: data.length + 1,
+                genotype: genotype,
+                prenatal: prenatal,
+                postnatal: postnatal,
+                source: {
+                    pmid: pmid,
+                    link: link,
+                    details: sourceDetails
+                },
+                prenatalImages: [],
+                postnatalImages: [],
+                comments: []
+            };
+            
+            // 添加图片
+            const prenatalImages = document.getElementById('prenatalImagePreview').querySelectorAll('img');
+            prenatalImages.forEach(img => {
+                newData.prenatalImages.push(img.src);
+            });
+            
+            const postnatalImages = document.getElementById('postnatalImagePreview').querySelectorAll('img');
+            postnatalImages.forEach(img => {
+                newData.postnatalImages.push(img.src);
+            });
+            
+            data.push(newData);
+            updateStats();
+            renderTable();
+            closeAddDataModal();
+            alert('数据添加成功！');
+        }
+
+        // 图片处理功能
+        function handleImageUpload(e, type) {
+            const files = e.target.files;
+            let previewContainer;
+            let maxImages;
+            
+            switch(type) {
+                case 'prenatal':
+                    previewContainer = document.getElementById('prenatalImagePreview');
+                    maxImages = 10;
+                    break;
+                case 'postnatal':
+                    previewContainer = document.getElementById('postnatalImagePreview');
+                    maxImages = 10;
+                    break;
+                case 'comment':
+                    previewContainer = document.getElementById('commentImagePreview');
+                    maxImages = 5;
+                    break;
+                case 'reply':
+                    previewContainer = document.getElementById('replyImagePreview');
+                    maxImages = 3;
+                    break;
+                default:
+                    previewContainer = document.getElementById('commentImagePreview');
+                    maxImages = 5;
+            }
+            
+            if (files.length > maxImages) {
+                alert(`最多只能上传${maxImages}张图片！`);
+                return;
+            }
+            
+            // 更新图片计数
+            if (type === 'comment') {
+                document.getElementById('commentImageCount').textContent = `${files.length}/5 张图片`;
+            } else if (type === 'reply') {
+                document.getElementById('replyImageCount').textContent = `${files.length}/3 张图片`;
+            }
+            
+            previewContainer.innerHTML = '';
+            
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const imgDiv = document.createElement('div');
+                    imgDiv.className = 'image-preview-item';
+                    
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'image-preview preview-img';
+                    img.dataset.src = e.target.result;
+                    
+                    // 添加删除按钮
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'delete-image-btn absolute -top-2 -right-2 bg-danger text-white rounded-full w-5 h-5 flex items-center justify-center text-xs';
+                    deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
+                    deleteBtn.addEventListener('click', function() {
+                        imgDiv.remove();
+                        // 更新计数
+                        const remainingImages = previewContainer.querySelectorAll('img').length;
+                        if (type === 'comment') {
+                            document.getElementById('commentImageCount').textContent = `${remainingImages}/5 张图片`;
+                        } else if (type === 'reply') {
+                            document.getElementById('replyImageCount').textContent = `${remainingImages}/3 张图片`;
+                        }
+                    });
+                    
+                    imgDiv.style.position = 'relative';
+                    imgDiv.appendChild(img);
+                    imgDiv.appendChild(deleteBtn);
+                    previewContainer.appendChild(imgDiv);
+                };
+                reader.readAsDataURL(file);
+            });
+            
+            // 绑定图片预览事件
+            document.querySelectorAll('.preview-img').forEach(img => {
+                img.addEventListener('click', function() {
+                    showImagePreview(this.dataset.src);
+                });
+            });
+        }
+
+        function showImagePreview(src) {
+            document.getElementById('previewImage').src = src;
+            document.getElementById('imagePreviewModal').classList.remove('hidden');
+            document.getElementById('imagePreviewModal').classList.add('flex');
+        }
+
+        function closeImagePreview() {
+            document.getElementById('imagePreviewModal').classList.add('hidden');
+            document.getElementById('imagePreviewModal').classList.remove('flex');
+        }
+
+        // 筛选功能
+        function applyFilters() {
+            currentFilters = {
+                idMin: document.getElementById('idMin').value,
+                idMax: document.getElementById('idMax').value,
+                genotype: document.getElementById('genotypeFilter').value,
+                prenatal: document.getElementById('prenatalFilter').value,
+                postnatal: document.getElementById('postnatalFilter').value,
+                source: document.getElementById('sourceFilter').value,
+                commentsMin: document.getElementById('commentsMin').value,
+                commentsMax: document.getElementById('commentsMax').value
+            };
+            
+            currentPage = 1;
+            renderTable();
+        }
+
+        function resetFilters() {
+            document.getElementById('idMin').value = '';
+            document.getElementById('idMax').value = '';
+            document.getElementById('genotypeFilter').value = '';
+            document.getElementById('prenatalFilter').value = '';
+            document.getElementById('postnatalFilter').value = '';
+            document.getElementById('sourceFilter').value = '';
+            document.getElementById('commentsMin').value = '';
+            document.getElementById('commentsMax').value = '';
+            
+            currentFilters = {
+                idMin: '',
+                idMax: '',
+                genotype: '',
+                prenatal: '',
+                postnatal: '',
+                source: '',
+                commentsMin: '',
+                commentsMax: ''
+            };
+            
+            currentPage = 1;
+            renderTable();
+        }
+
+        // 全局搜索功能
+        function handleGlobalSearch() {
+            searchQuery = document.getElementById('globalSearch').value.trim();
+            currentPage = 1;
+            renderTable();
+            
+            // 更新搜索结果计数
+            const filteredData = filterData();
+            document.getElementById('searchCount').textContent = `找到 ${filteredData.length} 个结果`;
+            
+            // 添加搜索结果高亮动画
+            if (searchQuery) {
+                document.getElementById('searchCount').classList.add('text-accent', 'font-medium');
+                setTimeout(() => {
+                    document.getElementById('searchCount').classList.remove('text-accent', 'font-medium');
+                }, 2000);
+            } else {
+                document.getElementById('searchCount').textContent = '';
+            }
+        }
+
+        // 数据筛选
+        function filterData() {
+            let filteredData = [...data];
+            
+            // 应用筛选条件
+            if (currentFilters.idMin) {
+                filteredData = filteredData.filter(item => item.id >= parseInt(currentFilters.idMin));
+            }
+            
+            if (currentFilters.idMax) {
+                filteredData = filteredData.filter(item => item.id <= parseInt(currentFilters.idMax));
+            }
+            
+            if (currentFilters.genotype) {
+                const keyword = currentFilters.genotype.toLowerCase();
+                filteredData = filteredData.filter(item => 
+                    item.genotype.toLowerCase().includes(keyword)
+                );
+            }
+            
+            if (currentFilters.prenatal) {
+                const keyword = currentFilters.prenatal.toLowerCase();
+                filteredData = filteredData.filter(item => 
+                    item.prenatal.toLowerCase().includes(keyword)
+                );
+            }
+            
+            if (currentFilters.postnatal) {
+                const keyword = currentFilters.postnatal.toLowerCase();
+                filteredData = filteredData.filter(item => 
+                    item.postnatal.toLowerCase().includes(keyword)
+                );
+            }
+            
+            if (currentFilters.source) {
+                const keyword = currentFilters.source.toLowerCase();
+                filteredData = filteredData.filter(item => 
+                    item.source.details.toLowerCase().includes(keyword) ||
+                    item.source.pmid.includes(keyword)
+                );
+            }
+            
+            if (currentFilters.commentsMin) {
+                filteredData = filteredData.filter(item => 
+                    item.comments.length >= parseInt(currentFilters.commentsMin)
+                );
+            }
+            
+            if (currentFilters.commentsMax) {
+                filteredData = filteredData.filter(item => 
+                    item.comments.length <= parseInt(currentFilters.commentsMax)
+                );
+            }
+            
+            // 应用全局搜索
+            if (searchQuery) {
+                const keyword = searchQuery.toLowerCase();
+                filteredData = filteredData.filter(item => 
+                    item.id.toString().includes(keyword) ||
+                    item.genotype.toLowerCase().includes(keyword) ||
+                    item.prenatal.toLowerCase().includes(keyword) ||
+                    item.postnatal.toLowerCase().includes(keyword) ||
+                    item.source.details.toLowerCase().includes(keyword) ||
+                    item.source.pmid.includes(keyword) ||
+                    item.comments.some(comment => 
+                        comment.author.toLowerCase().includes(keyword) ||
+                        comment.content.toLowerCase().includes(keyword) ||
+                        comment.replies.some(reply => 
+                            reply.author.toLowerCase().includes(keyword) ||
+                            reply.content.toLowerCase().includes(keyword)
+                        )
+                    )
+                );
+            }
+            
+            return filteredData;
+        }
+
+        // 渲染表格
+        function renderTable() {
+            const filteredData = filterData();
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, filteredData.length);
+            const pageData = filteredData.slice(startIndex, endIndex);
+            
+            const tableBody = document.getElementById('dataTableBody');
+            tableBody.innerHTML = '';
+            
+            if (pageData.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-4 py-8 text-center text-gray-500">
+                            <i class="fas fa-search-minus text-4xl mb-2"></i>
+                            <p>未找到匹配的数据</p>
+                        </td>
+                    </tr>
+                `;
+                updatePagination(0, 0);
+                return;
+            }
+            
+            pageData.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-200 hover:bg-gray-50 transition-colors';
+                
+                // 高亮搜索关键词
+                let genotypeDisplay = highlightKeyword(item.genotype, searchQuery);
+                let prenatalDisplay = highlightKeyword(item.prenatal, searchQuery);
+                let postnatalDisplay = highlightKeyword(item.postnatal, searchQuery);
+                let sourceDisplay = highlightKeyword(item.source.details, searchQuery);
+                
+                // 图片预览
+                const prenatalImagesHtml = item.prenatalImages.length > 0 ? 
+                    `<div class="image-preview-container">
+                        ${item.prenatalImages.map(img => 
+                            `<img src="${img}" alt="产前表型图片" class="image-preview preview-img" data-src="${img}">`
+                        ).join('')}
+                    </div>` : '';
+                    
+                const postnatalImagesHtml = item.postnatalImages.length > 0 ? 
+                    `<div class="image-preview-container">
+                        ${item.postnatalImages.map(img => 
+                            `<img src="${img}" alt="产后表型图片" class="image-preview preview-img" data-src="${img}">`
+                        ).join('')}
+                    </div>` : '';
+                
+                row.innerHTML = `
+                    <td class="px-4 py-3 font-medium">${item.id}</td>
+                    <td class="px-4 py-3">${genotypeDisplay}</td>
+                    <td class="px-4 py-3">${prenatalDisplay}${prenatalImagesHtml}</td>
+                    <td class="px-4 py-3">${postnatalDisplay}${postnatalImagesHtml}</td>
+                    <td class="px-4 py-3">
+                        <div class="max-w-xs">
+                            ${sourceDisplay}
+                            ${item.source.pmid ? 
+                                `<a href="https://pubmed.ncbi.nlm.nih.gov/${item.source.pmid}/" target="_blank" class="text-accent hover:underline text-sm">
+                                    <i class="fas fa-external-link-alt mr-1"></i>查看PMID
+                                </a>` : ''
+                            }
+                            ${item.source.link && !item.source.pmid ? 
+                                `<a href="${item.source.link}" target="_blank" class="text-accent hover:underline text-sm">
+                                    <i class="fas fa-external-link-alt mr-1"></i>查看原文
+                                </a>` : ''
+                            }
+                        </div>
+                    </td>
+                    <td class="px-4 py-3">
+                        <button class="view-comments text-primary hover:underline" data-genotype="${item.genotype}">
+                            <i class="fas fa-comments mr-1"></i>${item.comments.length} 条评论
+                        </button>
+                    </td>
+                    <td class="px-4 py-3">
+                        ${currentUser ? 
+                            `<button class="edit-data text-accent hover:underline mr-2" data-id="${item.id}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="delete-data text-danger hover:underline" data-id="${item.id}">
+                                <i class="fas fa-trash"></i>
+                            </button>` : ''
+                        }
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+            
+            // 绑定事件
+            document.querySelectorAll('.view-comments').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    showCommentModal(this.dataset.genotype);
+                });
+            });
+            
+            document.querySelectorAll('.edit-data').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    showEditDataModal(parseInt(this.dataset.id));
+                });
+            });
+            
+            document.querySelectorAll('.delete-data').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    deleteData(parseInt(this.dataset.id));
+                });
+            });
+            
+            // 绑定图片预览事件
+            document.querySelectorAll('.preview-img').forEach(img => {
+                img.addEventListener('click', function() {
+                    showImagePreview(this.dataset.src);
+                });
+            });
+            
+            updatePagination(filteredData.length, endIndex);
+        }
+
+        // 高亮关键词
+        function highlightKeyword(text, keyword) {
+            if (!keyword || !text) return text;
+            
+            const regex = new RegExp(`(${keyword})`, 'gi');
+            return text.replace(regex, '<span class="highlight">$1</span>');
+        }
+
+        // 更新分页信息
+        function updatePagination(totalItems, endIndex) {
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+            
+            document.getElementById('totalItems').textContent = totalItems;
+            document.getElementById('currentPageInfo').textContent = `${totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}-${endIndex}`;
+            document.getElementById('pageInfo').textContent = `第 ${currentPage} 页，共 ${totalPages} 页`;
+            
+            document.getElementById('prevPage').disabled = currentPage === 1;
+            document.getElementById('nextPage').disabled = currentPage === totalPages || totalItems === 0;
+        }
+
+        // 分页功能
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable();
+            }
+        }
+
+        function nextPage() {
+            const filteredData = filterData();
+            const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+            
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderTable();
+            }
+        }
+
+        // 评论功能
+        function showCommentModal(genotype) {
+            document.getElementById('commentGenotype').textContent = genotype;
+            document.getElementById('commentModal').classList.remove('hidden');
+            document.getElementById('commentModal').classList.add('flex');
+            
+            // 存储当前评论的基因型
+            document.getElementById('commentModal').dataset.genotype = genotype;
+            
+            renderCommentList(genotype);
+        }
+
+        function closeCommentModal() {
+            document.getElementById('commentModal').classList.add('hidden');
+            document.getElementById('commentModal').classList.remove('flex');
+            document.getElementById('commentInput').value = '';
+            document.getElementById('commentImagePreview').innerHTML = '';
+            document.getElementById('commentImageCount').textContent = '0/5 张图片';
+        }
+
+        function renderCommentList(genotype) {
+            const dataItem = data.find(item => item.genotype === genotype);
+            if (!dataItem || !dataItem.comments) {
+                document.getElementById('commentList').innerHTML = '<p class="text-center text-gray-500 py-8">暂无评论</p>';
+                return;
+            }
+            
+            let commentsHtml = '';
+            
+            dataItem.comments.forEach(comment => {
+                // 点赞按钮状态
+                const isCommentLiked = currentUser && comment.likedBy && comment.likedBy.includes(currentUser.username);
+                const likeButtonClass = isCommentLiked ? 'text-red-500' : 'text-gray-400';
+                
+                commentsHtml += `
+                    <div class="border-b border-gray-200 pb-4 mb-4">
+                        <div class="flex items-start space-x-3">
+                            <div class="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                                ${comment.author.charAt(0)}
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <span class="font-medium">${comment.author}</span>
+                                    <span class="text-sm text-gray-500">${comment.date}</span>
+                                </div>
+                                <p class="mb-2">${comment.content}</p>
+                                
+                                <!-- 评论图片 -->
+                                ${comment.images.length > 0 ? 
+                                    `<div class="image-preview-container mb-2">
+                                        ${comment.images.map(img => 
+                                            `<img src="${img}" alt="评论图片" class="image-preview preview-img" data-src="${img}">`
+                                        ).join('')}
+                                    </div>` : ''
+                                }
+                                
+                                <div class="flex items-center space-x-4 text-sm">
+                                    <button class="like-comment ${likeButtonClass}" data-comment-id="${comment.id}" data-genotype="${genotype}">
+                                        <i class="fas fa-heart"></i> ${comment.likes || 0}
+                                    </button>
+                                    ${currentUser ? 
+                                        `<button class="reply-comment text-primary" data-comment-id="${comment.id}" data-genotype="${genotype}">
+                                            <i class="fas fa-reply"></i> 回复
+                                        </button>` : ''
+                                    }
+                                    ${currentUser && (comment.author === currentUser.username || currentUser.role === 'admin') ? 
+                                        `<button class="delete-comment text-danger" data-comment-id="${comment.id}" data-genotype="${genotype}">
+                                            <i class="fas fa-trash"></i> 删除
+                                        </button>` : ''
+                                    }
+                                </div>
+                                
+                                <!-- 回复列表 -->
+                                ${comment.replies.length > 0 ? 
+                                    `<div class="ml-6 mt-3 space-y-3">
+                                        ${comment.replies.map(reply => {
+                                            const isReplyLiked = currentUser && reply.likedBy && reply.likedBy.includes(currentUser.username);
+                                            const replyLikeClass = isReplyLiked ? 'text-red-500' : 'text-gray-400';
+                                            
+                                            return `
+                                                <div class="border-l-2 border-gray-200 pl-3">
+                                                    <div class="flex items-center space-x-2 mb-1">
+                                                        <span class="font-medium text-sm">${reply.author}</span>
+                                                        <span class="text-xs text-gray-500">${reply.date}</span>
+                                                    </div>
+                                                    <p class="text-sm mb-2">${reply.content}</p>
+                                                    
+                                                    <!-- 回复图片 -->
+                                                    ${reply.images.length > 0 ? 
+                                                        `<div class="image-preview-container mb-2">
+                                                            ${reply.images.map(img => 
+                                                                `<img src="${img}" alt="回复图片" class="image-preview preview-img" data-src="${img}">`
+                                                            ).join('')}
+                                                        </div>` : ''
+                                                    }
+                                                    
+                                                    <div class="flex items-center space-x-4 text-xs">
+                                                        <button class="like-reply ${replyLikeClass}" data-comment-id="${comment.id}" data-reply-id="${reply.id}" data-genotype="${genotype}">
+                                                            <i class="fas fa-heart"></i> ${reply.likes || 0}
+                                                        </button>
+                                                        ${currentUser ? 
+                                                            `<button class="reply-reply text-primary" data-comment-id="${comment.id}" data-reply-id="${reply.id}" data-genotype="${genotype}">
+                                                                <i class="fas fa-reply"></i> 回复
+                                                            </button>` : ''
+                                                        }
+                                                        ${currentUser && (reply.author === currentUser.username || currentUser.role === 'admin') ? 
+                                                            `<button class="delete-reply text-danger" data-comment-id="${comment.id}" data-reply-id="${reply.id}" data-genotype="${genotype}">
+                                                                <i class="fas fa-trash"></i> 删除
+                                                            </button>` : ''
+                                                        }
+                                                    </div>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>` : ''
+                                }
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('commentList').innerHTML = commentsHtml;
+            
+            // 绑定评论事件
+            document.querySelectorAll('.like-comment').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    toggleLike(this.dataset.commentId, this.dataset.genotype);
+                });
+            });
+            
+            document.querySelectorAll('.reply-comment').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    showReplyForm(this.dataset.commentId, this.dataset.genotype);
+                });
+            });
+            
+            document.querySelectorAll('.delete-comment').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    deleteComment(this.dataset.commentId, this.dataset.genotype);
+                });
+            });
+            
+            document.querySelectorAll('.like-reply').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    toggleLike(this.dataset.commentId, this.dataset.genotype, this.dataset.replyId);
+                });
+            });
+            
+            document.querySelectorAll('.reply-reply').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    showReplyForm(this.dataset.commentId, this.dataset.genotype, this.dataset.replyId);
+                });
+            });
+            
+            document.querySelectorAll('.delete-reply').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    deleteReply(this.dataset.commentId, this.dataset.replyId, this.dataset.genotype);
+                });
+            });
+            
+            // 绑定图片预览事件
+            document.querySelectorAll('.preview-img').forEach(img => {
+                img.addEventListener('click', function() {
+                    showImagePreview(this.dataset.src);
+                });
+            });
+        }
+
+        function submitComment() {
+            if (!currentUser) {
+                alert('请先登录！');
+                return;
+            }
+            
+            const genotype = document.getElementById('commentModal').dataset.genotype;
+            const content = document.getElementById('commentInput').value.trim();
+            
+            if (!content) {
+                alert('请输入评论内容！');
+                return;
+            }
+            
+            const dataItem = data.find(item => item.genotype === genotype);
+            if (!dataItem) return;
+            
+            // 获取评论图片
+            const commentImages = document.getElementById('commentImagePreview').querySelectorAll('img');
+            const images = Array.from(commentImages).map(img => img.src);
+            
+            const newComment = {
+                id: Date.now(),
+                author: currentUser.username,
+                date: new Date().toISOString().split('T')[0],
+                content: content,
+                images: images,
+                likes: 0,
+                likedBy: [],
+                replies: []
+            };
+            
+            dataItem.comments.unshift(newComment);
+            renderCommentList(genotype);
+            
+            // 清空输入框
+            document.getElementById('commentInput').value = '';
+            document.getElementById('commentImagePreview').innerHTML = '';
+            document.getElementById('commentImageCount').textContent = '0/5 张图片';
+            
+            updateStats();
+        }
+
+        function showReplyForm(commentId, genotype, replyId = null) {
+            if (!currentUser) {
+                alert('请先登录！');
+                return;
+            }
+            
+            // 创建回复模态框
+            const replyModal = document.createElement('div');
+            replyModal.id = 'replyModal';
+            replyModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            replyModal.innerHTML = `
+                <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6 m-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold">回复评论</h2>
+                        <button class="close-reply-modal text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="mb-4">
+                        <textarea id="replyInput" rows="3" placeholder="请输入您的回复..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"></textarea>
+                    </div>
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex items-center space-x-4">
+                            <label class="cursor-pointer">
+                                <i class="fas fa-image text-gray-500 hover:text-primary"></i>
+                                <input type="file" id="replyImage" multiple accept="image/*" class="hidden">
+                            </label>
+                            <span id="replyImageCount" class="text-sm text-gray-500">0/3 张图片</span>
+                        </div>
+                    </div>
+                    <div id="replyImagePreview" class="mb-4 image-preview-container"></div>
+                    <div class="flex justify-end space-x-3">
+                        <button class="cancel-reply px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                            取消
+                        </button>
+                        <button class="submit-reply px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+                            提交回复
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(replyModal);
+            
+            // 绑定事件
+            document.querySelector('.close-reply-modal').addEventListener('click', function() {
+                document.body.removeChild(replyModal);
+            });
+            
+            document.querySelector('.cancel-reply').addEventListener('click', function() {
+                document.body.removeChild(replyModal);
+            });
+            
+            document.querySelector('.submit-reply').addEventListener('click', function() {
+                const replyContent = document.getElementById('replyInput').value.trim();
+                if (!replyContent) {
+                    alert('请输入回复内容！');
+                    return;
+                }
+                
+                const dataItem = data.find(item => item.genotype === genotype);
+                if (!dataItem) return;
+                
+                const comment = dataItem.comments.find(c => c.id == commentId);
+                if (!comment) return;
+                
+                // 获取回复图片
+                const replyImages = document.getElementById('replyImagePreview').querySelectorAll('img');
+                const images = Array.from(replyImages).map(img => img.src);
+                
+                const newReply = {
+                    id: Date.now(),
+                    author: currentUser.username,
+                    date: new Date().toISOString().split('T')[0],
+                    content: replyContent,
+                    images: images,
+                    likes: 0,
+                    likedBy: []
+                };
+                
+                if (replyId) {
+                    // 回复回复
+                    const parentReply = comment.replies.find(r => r.id == replyId);
+                    if (parentReply) {
+                        // 这里可以实现回复的回复，为了简化，我们直接添加到评论的回复中
+                        comment.replies.push(newReply);
+                    }
+                } else {
+                    // 回复评论
+                    comment.replies.push(newReply);
+                }
+                
+                renderCommentList(genotype);
+                updateStats();
+                document.body.removeChild(replyModal);
+            });
+            
+            // 图片上传事件
+            document.getElementById('replyImage').addEventListener('change', function(e) {
+                handleImageUpload(e, 'reply');
+            });
+            
+            // 点击模态框背景关闭
+            replyModal.addEventListener('click', function(e) {
+                if (e.target === replyModal) {
+                    document.body.removeChild(replyModal);
+                }
+            });
+        }
+
+        function toggleLike(commentId, genotype, replyId = null) {
+            if (!currentUser) {
+                alert('请先登录！');
+                return;
+            }
+            
+            const dataItem = data.find(item => item.genotype === genotype);
+            if (!dataItem) return;
+            
+            const comment = dataItem.comments.find(c => c.id == commentId);
+            if (!comment) return;
+            
+            if (replyId) {
+                // 点赞回复
+                const reply = comment.replies.find(r => r.id == replyId);
+                if (!reply) return;
+                
+                const likeIndex = reply.likedBy.indexOf(currentUser.username);
+                if (likeIndex > -1) {
+                    reply.likedBy.splice(likeIndex, 1);
+                    reply.likes--;
+                } else {
+                    reply.likedBy.push(currentUser.username);
+                    reply.likes++;
+                }
+            } else {
+                // 点赞评论
+                const likeIndex = comment.likedBy.indexOf(currentUser.username);
+                if (likeIndex > -1) {
+                    comment.likedBy.splice(likeIndex, 1);
+                    comment.likes--;
+                } else {
+                    comment.likedBy.push(currentUser.username);
+                    comment.likes++;
+                }
+            }
+            
+            renderCommentList(genotype);
+        }
+
+        function deleteComment(commentId, genotype) {
+            if (!currentUser) {
+                alert('请先登录！');
+                return;
+            }
+            
+            const dataItem = data.find(item => item.genotype === genotype);
+            if (!dataItem) return;
+            
+            const commentIndex = dataItem.comments.findIndex(c => c.id == commentId);
+            if (commentIndex === -1) return;
+            
+            const comment = dataItem.comments[commentIndex];
+            
+            // 检查权限
+            if (comment.author !== currentUser.username && currentUser.role !== 'admin') {
+                alert('您没有权限删除此评论！');
+                return;
+            }
+            
+            if (confirm('确定要删除这条评论吗？')) {
+                dataItem.comments.splice(commentIndex, 1);
+                renderCommentList(genotype);
+                updateStats();
+            }
+        }
+
+        function deleteReply(commentId, replyId, genotype) {
+            if (!currentUser) {
+                alert('请先登录！');
+                return;
+            }
+            
+            const dataItem = data.find(item => item.genotype === genotype);
+            if (!dataItem) return;
+            
+            const comment = dataItem.comments.find(c => c.id == commentId);
+            if (!comment) return;
+            
+            const replyIndex = comment.replies.findIndex(r => r.id == replyId);
+            if (replyIndex === -1) return;
+            
+            const reply = comment.replies[replyIndex];
+            
+            // 检查权限
+            if (reply.author !== currentUser.username && currentUser.role !== 'admin') {
+                alert('您没有权限删除此回复！');
+                return;
+            }
+            
+            if (confirm('确定要删除这条回复吗？')) {
+                comment.replies.splice(replyIndex, 1);
+                renderCommentList(genotype);
+                updateStats();
+            }
+        }
+
+        // 数据编辑和删除功能
+        function showEditDataModal(id) {
+            if (!currentUser) {
+                alert('请先登录！');
+                return;
+            }
+            
+            const dataItem = data.find(item => item.id === id);
+            if (!dataItem) return;
+            
+            // 这里可以实现编辑数据的模态框
+            alert('编辑功能将在后续版本中实现！');
+        }
+
+        function deleteData(id) {
+            if (!currentUser) {
+                alert('请先登录！');
+                return;
+            }
+            
+            // 检查权限
+            if (currentUser.role !== 'admin') {
+                alert('只有管理员可以删除数据！');
+                return;
+            }
+            
+            if (confirm('确定要删除这条数据吗？')) {
+                const index = data.findIndex(item => item.id === id);
+                if (index > -1) {
+                    data.splice(index, 1);
+                    updateStats();
+                    renderTable();
+                    alert('数据删除成功！');
+                }
+            }
+        }
+
+        // 更新统计信息
+        function updateStats() {
+            document.getElementById('totalRecords').textContent = data.length;
+            
+            const totalReferences = new Set();
+            data.forEach(item => {
+                if (item.source.pmid) {
+                    totalReferences.add(item.source.pmid);
+                }
+            });
+            document.getElementById('totalReferences').textContent = totalReferences.size;
+            
+            let totalComments = 0;
+            data.forEach(item => {
+                totalComments += item.comments.length;
+                item.comments.forEach(comment => {
+                    totalComments += comment.replies.length;
+                });
+            });
+            document.getElementById('totalComments').textContent = totalComments;
+            
+            // 模拟活跃研究者数量
+            const researchers = new Set();
+            data.forEach(item => {
+                item.comments.forEach(comment => {
+                    researchers.add(comment.author);
+                    comment.replies.forEach(reply => {
+                        researchers.add(reply.author);
+                    });
+                });
+            });
+            document.getElementById('totalResearchers').textContent = researchers.size;
+        }
+
+        // 工具函数
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+    </script>
+</body>
+</html>
